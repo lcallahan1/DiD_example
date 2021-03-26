@@ -1,13 +1,9 @@
 
 ---
 title: "DiD Example" 
-author: "Lissa's sample code"
-output:
-  html_notebook: default
-  html_document:
-    df_print: paged
-  pdf_document: default
+output: html_notebook
 ---
+
 ## DiD regression model with control group matching. Code used in my presentation for the "Careers in Data Science" virtual symposium, sponsored by the NV chapter of the ASA and the UNR Math department, 2021-03-23. 
 
 ```{r include=FALSE, echo=FALSE}
