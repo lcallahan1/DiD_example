@@ -57,7 +57,7 @@ essentially describes the difference between the _control_ and _treatment_ group
 usage, in comparison to the data collected during the period prior _(pre)_ to treatment, 
 those collected after treatment _(post)_ or after intervention began. 
 
-![](DiD.png)
+![DiD](https://user-images.githubusercontent.com/26192419/112564483-950af200-8d98-11eb-933b-f50ac6fd8141.png)
 
 ----
 
@@ -91,8 +91,6 @@ The trouble is, that this particular set of controls were not chosen in relation
 to these treatments. Thus, in order to make sure we're comparing apples-to-apples,
 we choose control group members with similar average trends to specific treatment 
 group members before treatment is a factor.
-
-![](apples_oranges.jpg)
 
 
 ```{r include= FALSE, echo=FALSE}
