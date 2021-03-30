@@ -9,7 +9,6 @@ setwd("~/Desktop/NVASA_symposium")
 
 # Options + Settings ------------------------------------------------------
 options(scipen=999)
-'%notin%' <- Negate('%in%') # handy operator
 
 library(dplyr)
 library(tidyr)
@@ -118,109 +117,49 @@ create_seasons <- function(DATASET){
   head(prepped)
   
 
-  # Wait to load--Matching package masks dplyr::select
-  library(Matching)
+# We will utilize the R `MatchIt` package here, which has a myriad of options with
+# ample statistical explanation for each.
+# See the [MatchIt website](https://kosukeimai.github.io/MatchIt/index.html)
+# and in particular, the "Reference" tab. 
+
+# Load packages
+library(MatchIt)
+library(optmatch) # for optimal, vs nearest neighbor methods
+
+# Match treatment and controls 
+set.seed(1234) # seed matters for reproducibility due to "nearest neighbor" method
+
+matched <- matchit(formula = TREATMENT ~ KWHDN_Summer + KWHDN_Winter, data = prepped, 
+                   method = "full", distance = "glm", discard = "both")
+                   # method = "nearest", distance = "glm", distance.options = list(),
+                   # discard = "none")
+# discard = "both" could result in better matches in general (as it will only keep the treatments for which we find good control matches), but no difference in results here.
+
+# Built in function for formatting "longer" dataset
+df_matched <- MatchIt::match.data(matched)[1:ncol(prepped)]
+head(df_matched)
+
+# count our new participants
+participants_matched <-  df_matched %>% select(TREATMENT, ACCT) 
+participants_matched %>% group_by(TREATMENT) %>% count()
 
   
-  match_repT <- function(DATASET, SEED){
-    tmp <- DATASET
-    # Estimate logit model - fitted values are propensity scores
-    match.model <- glm(TREATMENT ~ KWHDN.Summer + KWHDN.Winter,
-                       data = tmp, family = "binomial") # defaults to gaussian/normal
-    # Create matches using estimated logit model
-    set.seed(SEED)
-    match.out <- Match(Y=NULL, Tr=tmp$TREATMENT, X=match.model$fitted.values,
-                       replace = TRUE, M = 1, ties = FALSE)
-    MatchBalance(TREATMENT ~ KWHDN.Summer + KWHDN.Winter, 
-                 match.out = match.out, data = tmp)
-    # Create matched data set
-    treat.match.out <- as.data.frame(match.out$index.treated)
-    names(treat.match.out) <- "ROWNAME"
-    tmp$ROWNAME <- seq(length=nrow(tmp))
-    treat.match <- subset(tmp, TREATMENT == 1)
-    treat.match <- merge(treat.match.out, treat.match, by = "ROWNAME", all.x = TRUE)
-    treat.match <- treat.match[order(treat.match$ROWNAME),]
-    
-    matched.pairs <- as.data.frame(cbind(match.out$index.treated, match.out$index.control))
-    names(matched.pairs) <- c("TREAT.ROW", "CONTROL.ROW")
-    matched.pairs <- matched.pairs[order(matched.pairs$TREAT.ROW),]
-    
-    treat.match <- cbind(treat.match, matched.pairs)
-    
-    control.match.out <- as.data.frame(match.out$index.control)
-    names(control.match.out) <- "ROWNAME"
-    control.match <- subset(tmp, TREATMENT == 0)
-    
-    matched.dataset <- merge(treat.match, control.match, by.x = "CONTROL.ROW", by.y = "ROWNAME", all.x = TRUE)
-    matched.dataset <- unique(matched.dataset)
-    matched.dataset <- matched.dataset[order(matched.dataset$ROWNAME),]
-    
-    matched <- 
-      matched.dataset %>%
-      dplyr::select(ACCT.x, TREATMENT.x, KWHDN.Summer.x, KWHDN.Winter.x, 
-                    ACCT.y, TREATMENT.y, KWHDN.Summer.y, KWHDN.Winter.y) %>%
-      rename(treatment.ACCT = ACCT.x, 
-             control.ACCT = ACCT.y,
-             group.y = TREATMENT.y, 
-             group.x = TREATMENT.x, 
-             summer.x = KWHDN.Summer.x,
-             summer.y = KWHDN.Summer.y,
-             winter.x = KWHDN.Winter.x, 
-             winter.y = KWHDN.Winter.y)
-    return(matched)
-  }
+#### Let's test those matches!
+# Test Matches 
+# set the names of our covariate variables
+cov <- c("KWHDN_Summer","KWHDN_Winter") 
+# 'apply' (loop over) the two season columns and perform a Student's t-test to
+# compare usage between controls/treatments in our declared Winter/Summer months
+t_test_seasons <- lapply(cov, function(X) {t.test(dt_matched[, X] ~ dt_matched$TREATMENT)})
+# label the output of both tests for clarity
+names(t_test_seasons) <- c("KWHDN_Summer","KWHDN_Winter")
 
-  Without further ado...
-  #Match treatment and controls 
-  matched <- match_repT(prepped, 1234) 
-  
-  head(matched)
-  
-  t_test_seasons <- function (DATA){
-    # treatment
-    DATA.t <- DATA %>% 
-      dplyr::select(group.x, summer.x, winter.x) %>%
-      rename(group=group.x,
-             KWHDN.Summer=summer.x,
-             KWHDN.Winter=winter.x)
-    # control
-    DATA.c <- DATA %>% 
-      dplyr::select(group.y, summer.y,winter.y) %>%
-      rename(group=group.y,
-             KWHDN.Summer=summer.y,
-             KWHDN.Winter=winter.y)
-    test.data <- rbind(DATA.t, DATA.c)
-    
-    ## t test
-    cov <- c("KWHDN.Summer","KWHDN.Winter")
-    test.result<-lapply(cov, function(v) {t.test(test.data[, v] ~ test.data$group)})
-    names(test.result) <- c("KWHDN.Summer","KWHDN.Winter")
-    return(test.result)
-  }
-  
-  # Let's test those matches!
-  t_test_seasons(matched)
-  
-  
-  #### And clean up our new participant list:
-  matched_treat <- matched %>% dplyr::select(c(1:2)) # DO NOT "distinct", need the weightedness of controls
-  colnames(matched_treat) <- c("ACCT", "TREATMENT")
-  treatments <- matched_treat
-  
-  matched_cont <- matched %>% dplyr::select(c(5:6))
-  colnames(matched_cont) <- c("ACCT", "TREATMENT")
-  controls <- matched_cont
-  
-  participants_matched <- bind_rows(treatments, controls)
-  #saveRDS(participants_matched, file = "./data/matched_participants.RDS")
-  
-  participants_matched %>%
-    dplyr::select(TREATMENT, ACCT) %>%
-    unique() %>%
-    group_by(TREATMENT) %>%
-    count()
+t_test_seasons
 
-  
+# or more simply put:
+t.test(df_matched$KWHDN_Summer ~ df_matched$TREATMENT)
+t.test(df_matched$KWHDN_Winter ~ df_matched$TREATMENT)
+
   
   ### Regression Model
   
@@ -235,11 +174,9 @@ create_seasons <- function(DATASET){
   # are not just anecdotal evidence. (E.g., if you used less energy this year than last,
   #                                   is it only because the summer weather was more mild?)
   
-  #library(broom) # for tidy()
   library(lme4)
   library(MuMIn) # for r squared
 
-  
   #### But first we do aother statstical check:
   model_data <- inner_join(billing_data, participants_matched)
   
@@ -263,7 +200,6 @@ create_seasons <- function(DATASET){
     ggplot(., aes(x = as.factor(DATE), y = MEAN_ADC, colour = TREATMENT, linetype = TREATMENT)) +
     geom_line(aes(group = TREATMENT, size = TREATMENT)) +
     ylim(0, 40) +
-    #scale_y_continuous(breaks=seq(0,70,10)) +
     theme_bw() +
     scale_color_manual(name = "TREATMENT",
                        values = c('grey60', 'black'),
@@ -280,17 +216,6 @@ create_seasons <- function(DATASET){
     labs(y = "Average Daily Consumption (kWh)",
          x = "") 
 
-  run_did_model <- function(DATA) {
-    mix_fit <- lmer(ADC ~ AVG_HDD + AVG_CDD + POST +
-                      AVG_HDD:POST + AVG_CDD:POST +
-                      TREATMENT:POST + 
-                      (1 | ACCT), data = DATA)
-    r2 <- r.squaredGLMM(mix_fit)
-    pvalue <- drop1(mix_fit, test="Chisq")
-    results <- summary(mix_fit)
-    return(list(results, r2, pvalue))
-  }
-
   
   #### It's time...
   mix_fit <- lmer(ADC ~ AVG_HDD + AVG_CDD + POST +
@@ -300,7 +225,6 @@ create_seasons <- function(DATASET){
   
   # Raw output from the Linear Mixed Regression Model
   mix_fit
-  
   
   # Oddly, `summary` actually offers more statistical information. I also like to take
   # a look at the $r^2$ terms and the p-value.
@@ -315,11 +239,10 @@ create_seasons <- function(DATASET){
   pvalue
   
 
-  
   # Let's focus on this part:
   # 
   #                    Estimate  Std. Error    t value
-  #   POST:TREATMENT -0.52189293 0.064297527  -8.116843
+  #   POST:TREATMENT 
 
 # This is the interaction term representing the _post_ treatment period, for the 
 # _treatment_ participants. Because the dataset has "dummy terms" for each of these
