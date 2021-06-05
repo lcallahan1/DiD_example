@@ -4,7 +4,7 @@ title: "DiD Example"
 output: html_notebook
 ---
 
-## DiD regression model with control group matching. Code used in my presentation for the "Careers in Data Science" virtual symposium, sponsored by the NV chapter of the ASA and the UNR Math department, 2021-03-23. 
+#### Differnce-in-differences (DiD) regression model analysis with control group matching. Code used in my presentation for the "Careers in Data Science" virtual symposium, sponsored by the NV chapter of the ASA and the UNR Math department, 2021-03-23. 
 
 ```{r include=FALSE, echo=FALSE}
 # Boiler plate stuff
@@ -83,7 +83,7 @@ participants %>% group_by(TREATMENT) %>% count()
 
 Here, I have 5000 potential control group members. This means they are expected
 to have been set aside and not be targeted for any energy saving programs previous
-to that time. Usually, this would need to be verified, but I've already don't that...
+to that time. Usually, this would need to be verified, but I've already done that...
 
 Onward!
 
@@ -420,6 +420,4 @@ affirm there is a statistical difference in the electrical consumption between
 the treatment and control groups. Indeed, the treatment group appears to use less
 energy than the control group and less than they themselves did prior to treatment.
 Thus, there is evidence that this energy saving intervention is a success.
-It should be noted that these savings are fairly minute in comparison to daily usage, however.... 
-(note average percent reduction)
 
