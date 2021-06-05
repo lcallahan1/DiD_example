@@ -1,5 +1,5 @@
 
-#DiD Example
+# DiD Example
 
 #### Difference-in-differences (DiD) regression model analysis with control group matching. Code used in my presentation for the "Careers in Data Science" virtual symposium, sponsored by the NV chapter of the ASA and the UNR Math department, 2021-03-23. 
 
