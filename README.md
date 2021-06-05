@@ -1,10 +1,7 @@
 
----
-title: "DiD Example" 
-output: html_notebook
----
+#DiD Example
 
-#### Differnce-in-differences (DiD) regression model analysis with control group matching. Code used in my presentation for the "Careers in Data Science" virtual symposium, sponsored by the NV chapter of the ASA and the UNR Math department, 2021-03-23. 
+#### Difference-in-differences (DiD) regression model analysis with control group matching. Code used in my presentation for the "Careers in Data Science" virtual symposium, sponsored by the NV chapter of the ASA and the UNR Math department, 2021-03-23. 
 
 ```{r include=FALSE, echo=FALSE}
 # Boiler plate stuff
